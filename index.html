@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passport Studio Pro - Working Final</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #eef2f7;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: #222;
+    }
+    .top-bar {
+      background: #ffffff;
+      padding: 14px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      margin-bottom: 15px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 1100px;
+      width: 100%;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .input-group label {
+      font-size: 12px;
+      font-weight: bold;
+      color: #444;
+    }
+    select, input[type="number"], input[type="text"], input[type="file"] {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      background: #fff;
+    }
+    button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    button:hover { background: #0b5ed7; }
+    button.btn-add { background: #198754; }
+    button.btn-add:hover { background: #157347; }
+    button.btn-del { background: #dc3545; padding: 6px 10px; font-size: 12px; }
+    button.btn-del:hover { background: #bb2d3b; }
+    button.btn-crop { background: #6c757d; }
+    button.btn-crop:hover { background: #5a6268; }
+    button:disabled { background: #c0c4cc; cursor: not-allowed; }
+
+    #personsContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 1100px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .person-card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-left: 5px solid #0d6efd;
+    }
+    .person-thumb {
+      width: 48px;
+      height: 62px;
+      object-fit: cover;
+      border: 1px solid #000;
+      border-radius: 4px;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #777;
+    }
+
+    #previewCanvas {
+      max-width: 90vw;
+      max-height: 75vh;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      background: #ffffff;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .capacity-badge {
+      background: #e7f1ff;
+      color: #0d6efd;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    /* Crop Modal */
+    #cropModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .crop-wrapper {
+      position: relative;
+      user-select: none;
+      overflow: hidden;
+      display: inline-block;
+      background: #111;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    #cropCanvas { display: block; }
+    .crop-box {
+      position: absolute;
+      border: 2px dashed #00e5ff;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+      cursor: move;
+      touch-action: none;
+    }
+    .crop-handle {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #00e5ff;
+      border-radius: 50%;
+      right: -7px;
+      bottom: -7px;
+      cursor: se-resize;
+    }
+
+    @media print {
+      body { margin: 0 !important; padding: 0 !important; background: transparent !important; }
+      .top-bar, #personsContainer, h2, #cropModal { display: none !important; }
+      #previewCanvas {
+        display: block !important;
+        max-width: none !important;
+        max-height: none !important;
+        box-shadow: none !important;
+        page-break-after: avoid;
+        image-rendering: -webkit-optimize-contrast;
+      }
+    }
+  </style>
+  <style id="dynamicPrintStyle"></style>
+</head>
+<body>
+
+  <h2>Passport Photo Studio Maker</h2>
+
+  <div class="top-bar">
+    <div class="input-group">
+      <label>Paper Size:</label>
+      <select id="paperSizeSelect">
+        <option value="4x6">4×6 Inch (Max 8 Photos)</option>
+        <option value="a4" selected>A4 Sheet (Max 30 Photos)</option>
+      </select>
+    </div>
+
+    <span class="capacity-badge" id="slotsBadge">Used: 0 / 30 slots</span>
+
+    <button class="btn-add" onclick="addNewPerson()">+ Add Another Person</button>
+    <button onclick="window.print()">🖨️ Direct Print</button>
+    <button onclick="downloadSheet('jpg')">💾 Download JPG</button>
+    <button onclick="downloadSheet('png')">💾 PNG</button>
+  </div>
+
+  <div id="personsContainer"></div>
+
+  <canvas id="previewCanvas"></canvas>
+
+  <!-- Modal for optional crop & rotation -->
+  <div id="cropModal">
+    <div class="modal-content">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn-crop" onclick="rotateCurrentPerson(90)">↻ Rotate 90°</button>
+        <button class="btn-add" onclick="saveCropAndRegenerate()">✓ Apply Crop</button>
+        <button class="btn-del" onclick="closeCropModal()">Close</button>
+      </div>
+      <div class="crop-wrapper">
+        <canvas id="cropCanvas"></canvas>
+        <div class="crop-box" id="cropBox">
+          <div class="crop-handle" id="cropHandle"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const paperSizeSelect = document.getElementById('paperSizeSelect');
+    const slotsBadge = document.getElementById('slotsBadge');
+    const personsContainer = document.getElementById('personsContainer');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d', { alpha: false });
+    const dynamicPrintStyle = document.getElementById('dynamicPrintStyle');
+
+    const cropModal = document.getElementById('cropModal');
+    const cropCanvas = document.getElementById('cropCanvas');
+    const cropCtx = cropCanvas.getContext('2d');
+    const cropBox = document.getElementById('cropBox');
+    const cropHandle = document.getElementById('cropHandle');
+
+    const PASSPORT_ASPECT = 3.5 / 4.5;
+    const PHOTO_WIDTH = 413;  // 3.5cm @ 300 DPI
+    const PHOTO_HEIGHT = 531; // 4.5cm @ 300 DPI
+
+    const PAPER_CONFIGS = {
+      '4x6': {
+        width: 1800, height: 1200, cols: 4, rows: 2, maxPhotos: 8,
+        cssPage: '@page { size: 6in 4in landscape; margin: 0; } #previewCanvas { width: 6in !important; height: 4in !important; }'
+      },
+      'a4': {
+        width: 2480, height: 3508, cols: 5, rows: 6, maxPhotos: 30,
+        cssPage: '@page { size: A4 portrait; margin: 0; } #previewCanvas { width: 210mm !important; height: 297mm !important; }'
+      }
+    };
+
+    let persons = [];
+    let activePersonIndex = null;
+    let editingBox = { x: 50, y: 50, w: 140, h: 180 };
+    let displayScale = 1;
+
+    function updatePaperConfig() {
+      const p = paperSizeSelect.value;
+      const config = PAPER_CONFIGS[p];
+      dynamicPrintStyle.innerHTML = config.cssPage;
+      previewCanvas.width = config.width;
+      previewCanvas.height = config.height;
+      updateTotalSlotsBadge();
+    }
+
+    paperSizeSelect.addEventListener('change', () => {
+      updatePaperConfig();
+      renderSheet();
+    });
+
+    function addNewPerson() {
+      const defaultQty = paperSizeSelect.value === '4x6' ? 4 : 6;
+      persons.push({
+        img: null,
+        rotation: 0,
+        cropRect: null,
+        name: '',
+        dop: '',
+        qty: defaultQty,
+        namedQty: defaultQty
+      });
+      renderPersonsList();
+      renderSheet();
+    }
+
+    function removePerson(index) {
+      if (persons.length <= 1) {
+        persons[0] = { img: null, rotation: 0, cropRect: null, name: '', dop: '', qty: 6, namedQty: 6 };
+      } else {
+        persons.splice(index, 1);
+      }
+      renderPersonsList();
+      renderSheet();
+    }
+
+    function renderPersonsList() {
+      personsContainer.innerHTML = '';
+      persons.forEach((p, idx) => {
+        const card = document.createElement('div');
+        card.className = 'person-card';
+
+        const thumbHTML = p.img 
+          ? `<img src="${p.img.src}" class="person-thumb" id="thumb-${idx}" style="display:block;" />`
+          : `<div class="person-thumb" id="thumb-${idx}">No Img</div>`;
+
+        card.innerHTML = `
+          ${thumbHTML}
+          <div class="input-group">
+            <label>Person ${idx + 1} Photo:</label>
+            <input type="file" accept="image/*" onchange="handleFileChange(event, ${idx})">
+          </div>
+          <div class="input-group">
+            <label>Candidate Name:</label>
+            <input type="text" placeholder="e.g. AMIT SHARMA" value="${p.name}" oninput="updateField(${idx}, 'name', this.value)">
+          </div>
+          <div class="input-group">
+            <label>DOP / Date:</label>
+            <input type="text" placeholder="e.g. DOP: 18/10/2026" value="${p.dop}" oninput="updateField(${idx}, 'dop', this.value)">
+          </div>
+          <div class="input-group">
+            <label>Total Photos:</label>
+            <input type="number" min="1" max="30" style="width:75px;" value="${p.qty}" oninput="updateField(${idx}, 'qty', this.value)">
+          </div>
+          <div class="input-group">
+            <label>Name/DOP Photos:</label>
+            <input type="number" min="0" max="${p.qty}" id="named-input-${idx}" style="width:75px;" value="${p.namedQty}" oninput="updateField(${idx}, 'namedQty', this.value)">
+          </div>
+          <button class="btn-crop" id="crop-btn-${idx}" ${p.img ? '' : 'disabled'} onclick="openCropModal(${idx})">✂️ Crop/Rotate</button>
+          <button class="btn-del" onclick="removePerson(${idx})">🗑️ Delete</button>
+        `;
+        personsContainer.appendChild(card);
+      });
+      updateTotalSlotsBadge();
+    }
+
+    function updateField(idx, field, val) {
+      if (field === 'qty') {
+        persons[idx].qty = parseInt(val) || 0;
+        if (persons[idx].namedQty > persons[idx].qty) {
+          persons[idx].namedQty = persons[idx].qty;
+          const namedInput = document.getElementById(`named-input-${idx}`);
+          if (namedInput) namedInput.value = persons[idx].qty;
+        }
+        const namedInput = document.getElementById(`named-input-${idx}`);
+        if (namedInput) namedInput.max = persons[idx].qty;
+      } else if (field === 'namedQty') {
+        const n = parseInt(val) || 0;
+        persons[idx].namedQty = Math.min(n, persons[idx].qty);
+      } else {
+        persons[idx][field] = val;
+      }
+      updateTotalSlotsBadge();
+      renderSheet();
+    }
+
+    function handleFileChange(e, idx) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const image = new Image();
+        image.onload = function() {
+          persons[idx].img = image;
+          persons[idx].rotation = 0;
+          persons[idx].cropRect = null;
+
+          // Update thumbnail visually
+          const thumbEl = document.getElementById(`thumb-${idx}`);
+          if (thumbEl) {
+            thumbEl.outerHTML = `<img src="${image.src}" class="person-thumb" id="thumb-${idx}" style="display:block;" />`;
+          }
+          const cropBtn = document.getElementById(`crop-btn-${idx}`);
+          if (cropBtn) cropBtn.disabled = false;
+
+          // Direct render sheet without blocking
+          renderSheet();
+        };
+        image.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function updateTotalSlotsBadge() {
+      const config = PAPER_CONFIGS[paperSizeSelect.value];
+      const used = persons.reduce((sum, p) => sum + (p.img ? (parseInt(p.qty) || 0) : 0), 0);
+      slotsBadge.textContent = `Used: ${used} / ${config.maxPhotos} slots`;
+      slotsBadge.style.color = used > config.maxPhotos ? '#dc3545' : '#0d6efd';
+    }
+
+    // Rotated canvas helper
+    function getRotatedCanvas(img, rotation) {
+      const off = document.createElement('canvas');
+      const oCtx = off.getContext('2d');
+      const isPerp = (rotation === 90 || rotation === 270);
+      const w = isPerp ? img.height : img.width;
+      const h = isPerp ? img.width : img.height;
+      off.width = w; off.height = h;
+      oCtx.translate(w / 2, h / 2);
+      oCtx.rotate((rotation * Math.PI) / 180);
+      oCtx.drawImage(img, -img.width / 2, -img.height / 2);
+      return off;
+    }
+
+    function openCropModal(idx) {
+      activePersonIndex = idx;
+      const p = persons[idx];
+      if (!p || !p.img) return;
+
+      cropModal.style.display = 'flex';
+      const rotated = getRotatedCanvas(p.img, p.rotation);
+
+      const maxW = Math.min(window.innerWidth - 60, 600);
+      const maxH = 450;
+      displayScale = Math.min(maxW / rotated.width, maxH / rotated.height, 1);
+
+      cropCanvas.width = Math.round(rotated.width * displayScale);
+      cropCanvas.height = Math.round(rotated.height * displayScale);
+      cropCtx.drawImage(rotated, 0, 0, cropCanvas.width, cropCanvas.height);
+
+      if (p.cropRect) {
+        editingBox = {
+          x: Math.round(p.cropRect.x * displayScale),
+          y: Math.round(p.cropRect.y * displayScale),
+          w: Math.round(p.cropRect.w * displayScale),
+          h: Math.round(p.cropRect.h * displayScale)
+        };
+      } else {
+        const boxH = Math.round(cropCanvas.height * 0.75);
+        const boxW = Math.round(boxH * PASSPORT_ASPECT);
+        editingBox.w = Math.min(boxW, cropCanvas.width - 20);
+        editingBox.h = Math.round(editingBox.w / PASSPORT_ASPECT);
+        editingBox.x = Math.round((cropCanvas.width - editingBox.w) / 2);
+        editingBox.y = Math.round((cropCanvas.height - editingBox.h) / 2);
+      }
+      updateCropBoxDOM();
+    }
+
+    function updateCropBoxDOM() {
+      cropBox.style.left = editingBox.x + 'px';
+      cropBox.style.top = editingBox.y + 'px';
+      cropBox.style.width = editingBox.w + 'px';
+      cropBox.style.height = editingBox.h + 'px';
+    }
+
+    function rotateCurrentPerson(deg) {
+      if (activePersonIndex === null) return;
+      persons[activePersonIndex].rotation = (persons[activePersonIndex].rotation + deg) % 360;
+      persons[activePersonIndex].cropRect = null;
+      openCropModal(activePersonIndex);
+    }
+
+    function saveCropAndRegenerate() {
+      if (activePersonIndex === null) return;
+      persons[activePersonIndex].cropRect = {
+        x: Math.round(editingBox.x / displayScale),
+        y: Math.round(editingBox.y / displayScale),
+        w: Math.round(editingBox.w / displayScale),
+        h: Math.round(editingBox.h / displayScale)
+      };
+      closeCropModal();
+      renderSheet();
+    }
+
+    function closeCropModal() {
+      cropModal.style.display = 'none';
+      activePersonIndex = null;
+    }
+
+    let isDragging = false, isResizing = false, startX = 0, startY = 0, startBox = {};
+    cropBox.addEventListener('mousedown', function(e) {
+      if (e.target === cropHandle) return;
+      isDragging = true; startX = e.clientX; startY = e.clientY; startBox = { ...editingBox };
+      e.preventDefault();
+    });
+    cropHandle.addEventListener('mousedown', function(e) {
+      isResizing = true; startX = e.clientX; startY = e.clientY; startBox = { ...editingBox };
+      e.stopPropagation(); e.preventDefault();
+    });
+    window.addEventListener('mousemove', function(e) {
+      if (isDragging) {
+        let nx = Math.max(0, Math.min(cropCanvas.width - editingBox.w, startBox.x + (e.clientX - startX)));
+        let ny = Math.max(0, Math.min(cropCanvas.height - editingBox.h, startBox.y + (e.clientY - startY)));
+        editingBox.x = nx; editingBox.y = ny; updateCropBoxDOM();
+      } else if (isResizing) {
+        let newW = startBox.w + (e.clientX - startX);
+        let newH = newW / PASSPORT_ASPECT;
+        if (newW >= 60 && editingBox.x + newW <= cropCanvas.width && editingBox.y + newH <= cropCanvas.height) {
+          editingBox.w = Math.round(newW); editingBox.h = Math.round(newH); updateCropBoxDOM();
+        }
+      }
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; isResizing = false; });
+
+    // Step-down downsampling for crisp output
+    function getCrispCroppedCanvas(sourceCanvas, crop, targetW, targetH) {
+      let cur = document.createElement('canvas');
+      cur.width = crop.w; cur.height = crop.h;
+      let cCtx = cur.getContext('2d');
+      cCtx.imageSmoothingEnabled = true; cCtx.imageSmoothingQuality = 'high';
+      cCtx.drawImage(sourceCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+
+      while (cur.width * 0.5 > targetW) {
+        let step = document.createElement('canvas');
+        step.width = Math.round(cur.width * 0.5);
+        step.height = Math.round(cur.height * 0.5);
+        let sCtx = step.getContext('2d');
+        sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
+        sCtx.drawImage(cur, 0, 0, step.width, step.height);
+        cur = step;
+      }
+
+      let final = document.createElement('canvas');
+      final.width = targetW; final.height = targetH;
+      let fCtx = final.getContext('2d');
+      fCtx.imageSmoothingEnabled = true; fCtx.imageSmoothingQuality = 'high';
+      fCtx.drawImage(cur, 0, 0, targetW, targetH);
+      return final;
+    }
+
+    function drawHeavyBoldText(ctx, text, x, y, font, strokeW = 1.4) {
+      ctx.font = font;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#000000';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = strokeW;
+      ctx.strokeText(text, x, y);
+      ctx.fillText(text, x, y);
+    }
+
+    function applySolidBlackBorder(ctx, w, h, borderWidth = 3) {
+      ctx.lineWidth = borderWidth;
+      ctx.strokeStyle = '#000000';
+      ctx.strokeRect(borderWidth / 2, borderWidth / 2, w - borderWidth, h - borderWidth);
+    }
+
+    function preparePersonCanvases(person) {
+      const rotated = getRotatedCanvas(person.img, person.rotation);
+      let crop = person.cropRect;
+      if (!crop) {
+        const targetRatio = PASSPORT_ASPECT;
+        const imgRatio = rotated.width / rotated.height;
+        let sX = 0, sY = 0, sW = rotated.width, sH = rotated.height;
+        if (imgRatio > targetRatio) {
+          sW = Math.round(rotated.height * targetRatio);
+          sX = Math.round((rotated.width - sW) / 2);
+        } else {
+          sH = Math.round(rotated.width / targetRatio);
+          sY = Math.round((rotated.height - sH) / 2);
+        }
+        crop = { x: sX, y: sY, w: sW, h: sH };
+      }
+
+      const plainImg = getCrispCroppedCanvas(rotated, crop, PHOTO_WIDTH, PHOTO_HEIGHT);
+
+      // Plain Photo (With Solid Black Outline)
+      const plain = document.createElement('canvas');
+      plain.width = PHOTO_WIDTH; plain.height = PHOTO_HEIGHT;
+      const pCtx = plain.getContext('2d');
+      pCtx.drawImage(plainImg, 0, 0);
+      applySolidBlackBorder(pCtx, PHOTO_WIDTH, PHOTO_HEIGHT, 3);
+
+      // Named Photo
+      const named = document.createElement('canvas');
+      named.width = PHOTO_WIDTH; named.height = PHOTO_HEIGHT;
+      const nCtx = named.getContext('2d');
+      nCtx.drawImage(plainImg, 0, 0);
+
+      const name = (person.name || '').trim();
+      const dop = (person.dop || '').trim();
+
+      if (name !== '' || dop !== '') {
+        const stripHeight = (name !== '' && dop !== '') ? 88 : 52;
+        const stripY = PHOTO_HEIGHT - stripHeight;
+
+        nCtx.fillStyle = '#ffffff';
+        nCtx.fillRect(0, stripY, PHOTO_WIDTH, stripHeight);
+
+        nCtx.strokeStyle = '#000000';
+        nCtx.lineWidth = 2;
+        nCtx.beginPath();
+        nCtx.moveTo(0, stripY);
+        nCtx.lineTo(PHOTO_WIDTH, stripY);
+        nCtx.stroke();
+
+        if (name !== '' && dop !== '') {
+          drawHeavyBoldText(nCtx, name.toUpperCase(), PHOTO_WIDTH / 2, stripY + 27, '900 27px Arial, sans-serif', 1.5);
+          drawHeavyBoldText(nCtx, dop.toUpperCase(), PHOTO_WIDTH / 2, stripY + 62, '900 25px Arial, sans-serif', 1.5);
+        } else {
+          const txt = name !== '' ? name.toUpperCase() : dop.toUpperCase();
+          drawHeavyBoldText(nCtx, txt, PHOTO_WIDTH / 2, stripY + (stripHeight / 2), '900 28px Arial, sans-serif', 1.5);
+        }
+      }
+
+      applySolidBlackBorder(nCtx, PHOTO_WIDTH, PHOTO_HEIGHT, 3);
+      return { plain, named };
+    }
+
+    function renderSheet() {
+      const config = PAPER_CONFIGS[paperSizeSelect.value];
+      previewCtx.fillStyle = '#ffffff';
+      previewCtx.fillRect(0, 0, config.width, config.height);
+
+      const gapX = Math.round((config.width - (config.cols * PHOTO_WIDTH)) / (config.cols + 1));
+      const gapY = Math.round((config.height - (config.rows * PHOTO_HEIGHT)) / (config.rows + 1));
+
+      let drawQueue = [];
+      persons.forEach(p => {
+        if (!p.img) return;
+        const { plain, named } = preparePersonCanvases(p);
+        const qty = parseInt(p.qty) || 0;
+        const namedQty = Math.min(parseInt(p.namedQty) || 0, qty);
+
+        for (let i = 0; i < qty; i++) {
+          if (drawQueue.length >= config.maxPhotos) break;
+          const hasText = (i < namedQty && (p.name.trim() !== '' || p.dop.trim() !== ''));
+          drawQueue.push(hasText ? named : plain);
+        }
+      });
+
+      let index = 0;
+      for (let r = 0; r < config.rows; r++) {
+        for (let c = 0; c < config.cols; c++) {
+          if (index >= drawQueue.length) break;
+
+          const x = gapX + c * (PHOTO_WIDTH + gapX);
+          const y = gapY + r * (PHOTO_HEIGHT + gapY);
+
+          previewCtx.drawImage(drawQueue[index], x, y, PHOTO_WIDTH, PHOTO_HEIGHT);
+
+          // Subtle cutting marks
+          previewCtx.lineWidth = 1;
+          previewCtx.strokeStyle = '#d0d0d0';
+          previewCtx.strokeRect(x - 1, y - 1, PHOTO_WIDTH + 2, PHOTO_HEIGHT + 2);
+
+          index++;
+        }
+        if (index >= drawQueue.length) break;
+      }
+      updateTotalSlotsBadge();
+    }
+
+    function downloadSheet(type) {
+      const p = paperSizeSelect.value;
+      const link = document.createElement('a');
+      link.download = `passport_sheet_${p}.${type === 'png' ? 'png' : 'jpg'}`;
+      link.href = previewCanvas.toDataURL(type === 'png' ? 'image/png' : 'image/jpeg', 1.0);
+      link.click();
+    }
+
+    // Init
+    updatePaperConfig();
+    addNewPerson();
+  </script>
+</body>
+</html>
